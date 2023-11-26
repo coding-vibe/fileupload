@@ -1,9 +1,9 @@
-import FileUploader from './components/FileUploader/FileUploader'
+import FileUploadForm from './components/FileUploadForm'
 import './App.css'
 
 function App() {
   return (
-    <FileUploader />
+    <FileUploadForm />
   );
 }
 
