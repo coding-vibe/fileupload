@@ -3,17 +3,15 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Formik, Form, Field } from 'formik';
 import DeleteIcon from '@mui/icons-material/DeleteForever';
-import LoadingButton from '@mui/lab/LoadingButton';
-import Box from '@mui/material/Box'
-import * as yup from 'yup';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import VALIDATION_SCHEMA from './validation';
 import * as classes from './styles';
 
 const FileUploadForm = () => {
   const handleSubmit = (
     values,
-    { setSubmitting },
   ) => {
-    setSubmitting(false);
     console.log(values);
   }
 
@@ -21,33 +19,30 @@ const FileUploadForm = () => {
     <Formik
       initialValues={{ file: null }}
       onSubmit={handleSubmit}
-      validationSchema={yup.object().shape({ file: yup.string().required('Required') })}
+      validationSchema={VALIDATION_SCHEMA}
     >
-       {({ isSubmitting }) => (
+      {() => (
         <Form>
           <Field
             component={ImageField}
             css={classes.wrap}
             name='file'
           />
-
-          <LoadingButton
-            disabled={isSubmitting}
-            loading={isSubmitting}
+          <Button
             type='submit'
             variant='contained'>
             Send files
-          </LoadingButton>
+          </Button>
         </Form>
       )}
     </Formik>
-  )
+  );
 }
 
 const ImageField = ({
-  field: { name, onChange, value },
-  form: {getFieldMeta},
-  className
+  className,
+  field: { name, value },
+  form: { getFieldMeta, setFieldValue },
 }) => {
 
   const meta = getFieldMeta(name);
@@ -55,69 +50,76 @@ const ImageField = ({
 
   if (value)
     return (
-      <div>
-        <span>{value}</span><DeleteIcon />
+      <div css={classes.box}>
+        <span>{value}</span>
+        <DeleteIcon />
       </div>)
 
   return (
     <div>
-      <FileUploader className={className} onChange={onChange} name={name} />
-      {error && <Box sx={{mb: 2, color: 'error.dark'}}>{error}</Box>}
+      <FileUploader className={className} name={name} setFieldValue={setFieldValue} />
+      {error &&
+        <Box sx={{ color: 'error.dark', mb: 2 }}>
+          {error}
+        </Box>}
     </div>
-  )
+  );
 }
 
-const URL = 'http://localhost:8000';
+const ALLOWED_FILE_EXTENSIONS = ['.gif', '.jpeg', '.jpg', '.png'];
+const RANDOM_IMAGE_DESCRIPTION = 'Lorem ipsum dolor sit amet';
+const MAX_FILE_SIZE = 7000000;
+const URL = 'http://localhost:8000/file-upload/';
 
 const FileUploader = ({
   className,
-  onChange,
   name,
+  setFieldValue,
 }) => {
   const onDrop = useCallback(acceptedFiles => {
     const [file] = acceptedFiles;
     const formData = new FormData();
     formData.append('title', file.name);
-    formData.append('image', file.path);
-    formData.append('description', 'Lorem ipsum dolor sit amet');
+    formData.append('image', file);
+    formData.append('description', RANDOM_IMAGE_DESCRIPTION);
 
     const requestOptions = {
       method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
       body: formData,
-    }
+    };
 
     fetch(URL, requestOptions)
-      .then(async response => {
+      .then(response => {
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         return response.json();
       })
-      .then(() => {
-        onChange(file.path);
+      .then((response) => {
+        setFieldValue(name, response.image_url);
       })
       .catch(error => {
         console.error('Error during file upload:', error);
       });
-    console.log(acceptedFiles);
-  }, [onChange]);
+  }, [name, setFieldValue]);
 
   const {
     getRootProps,
     getInputProps
   } = useDropzone({
-    onDrop
-  })
+    onDrop,
+    accept: {
+        'image/*': ALLOWED_FILE_EXTENSIONS,
+    },
+    maxSize: MAX_FILE_SIZE,
+  });
 
   return (
-      <Box {...getRootProps()} className={className}>
-      <input {...getInputProps()} id={name}  name={name} />
-      <div>Drag and drop your images here.</div>
-      </Box>
-  )
+    <Box {...getRootProps()} className={className}>
+      <input {...getInputProps()} id={name} name={name} />
+      <div>Drag and drop some files here, or click to select files</div>
+    </Box>
+  );
 }
 
 export default FileUploadForm;
