@@ -5,6 +5,7 @@ import { Formik, Form, Field } from 'formik';
 import DeleteIcon from '@mui/icons-material/DeleteForever';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import VALIDATION_SCHEMA from './validation';
 import * as classes from './styles';
 
@@ -29,9 +30,10 @@ const FileUploadForm = () => {
             name='file'
           />
           <Button
+            sx={{ bgcolor: 'secondary.dark' }}
             type='submit'
             variant='contained'>
-            Send files
+            Send image
           </Button>
         </Form>
       )}
@@ -50,19 +52,23 @@ const ImageField = ({
 
   if (value)
     return (
-      <div css={classes.box}>
-        <span>{value}</span>
-        <DeleteIcon />
-      </div>)
+      <div>
+        <img alt={name} css={classes.img} src={`http://localhost:8000${value}`} />
+        <div css={classes.box}>
+          <span>{value}</span>
+          <DeleteIcon />
+        </div>
+      </div>
+    )
 
   return (
-    <div>
-      <FileUploader className={className} name={name} setFieldValue={setFieldValue} />
+    <Box>
+      <FileUploader className={className} name={name} onUploadSuccess={(url)=> setFieldValue(name, url)} />
       {error &&
         <Box sx={{ color: 'error.dark', mb: 2 }}>
           {error}
         </Box>}
-    </div>
+    </Box>
   );
 }
 
@@ -74,7 +80,7 @@ const URL = 'http://localhost:8000/file-upload/';
 const FileUploader = ({
   className,
   name,
-  setFieldValue,
+  onUploadSuccess,
 }) => {
   const onDrop = useCallback(acceptedFiles => {
     const [file] = acceptedFiles;
@@ -96,12 +102,12 @@ const FileUploader = ({
         return response.json();
       })
       .then((response) => {
-        setFieldValue(name, response.image_url);
+        onUploadSuccess(response.image_url);
       })
       .catch(error => {
         console.error('Error during file upload:', error);
       });
-  }, [name, setFieldValue]);
+  }, [onUploadSuccess]);
 
   const {
     getRootProps,
@@ -112,12 +118,15 @@ const FileUploader = ({
         'image/*': ALLOWED_FILE_EXTENSIONS,
     },
     maxSize: MAX_FILE_SIZE,
+    multiple: false,
   });
 
   return (
     <Box {...getRootProps()} className={className}>
       <input {...getInputProps()} id={name} name={name} />
-      <div>Drag and drop some files here, or click to select files</div>
+      <Typography component='div' variant='overline'>
+        Drag and drop an image here, or click to select it
+      </Typography>
     </Box>
   );
 }
