@@ -6,6 +6,7 @@ import { Formik, Form, Field } from 'formik';
 import DeleteIcon from '@mui/icons-material/DeleteForever';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Slider from '@mui/material/Slider';
 import Typography from '@mui/material/Typography';
 import VALIDATION_SCHEMA from './validation';
 import * as classes from './styles';
@@ -80,23 +81,11 @@ const MIN_IMAGE_DIMENSIONS = {
   height: 500,
   width: 500,
 };
+const SCALE_CONFIG = {
+  min: 1,
+  max: 2,
+};
 const URL = 'http://localhost:8000/file-upload/';
-
-const readFileAsDataURL = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      resolve(reader.result);
-    };
-
-    reader.onerror = (error) => {
-      reject(error);
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
 
 const convertBase64ToImage = (base64) => {
   return new Promise((resolve, reject) => {
@@ -112,16 +101,32 @@ const convertBase64ToImage = (base64) => {
 
     img.src = base64;
   });
-}
+};
 
+const readFileAsDataURL = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+
+    reader.onerror = (error) => {
+      reject(error);
+    };
+
+    reader.readAsDataURL(file);
+  });
+};
 
 const FileUploader = ({
   className,
   name,
   onUploadSuccess,
 }) => {
-  const [image, setImage] = useState(null);
   const editorRef = useRef(null);
+  const [image, setImage] = useState(null);
+  const [zoom, setZoom] = useState(SCALE_CONFIG.max);
 
   const handleClick = () => {
     const croppedImageUrl = editorRef.current.getImage().toDataURL();
@@ -130,6 +135,7 @@ const FileUploader = ({
     console.log(croppedImage);
 
     const formData = new FormData();
+    //TODO: Should be changed
     formData.append('title', RANDOM_IMAGE_DESCRIPTION);
     formData.append('image', croppedImage);
     formData.append('description', RANDOM_IMAGE_DESCRIPTION);
@@ -152,6 +158,10 @@ const FileUploader = ({
       .catch(error => {
         console.error('Error during file upload:', error);
       });
+  };
+
+  const handleZoomChange = (_, newZoom) => {
+    setZoom(newZoom);
   };
 
   const onDrop = useCallback(acceptedFiles => {
@@ -194,12 +204,21 @@ const FileUploader = ({
       </Box>}
       {image && <div>
         <AvatarEditor
-          ref={editorRef}
-          image={image}
-          width={200}
-          height={200}
           border={50}
-          scale={1.2}
+          height={200}
+          image={image}
+          ref={editorRef}
+          scale={zoom}
+          width={200}
+        />
+         <Slider
+          aria-labelledby='zoom-slider'
+          onChange={handleZoomChange}
+          max={SCALE_CONFIG.max}
+          min={SCALE_CONFIG.min}
+          step={0.1}
+          sx={{ color: 'secondary.light' }}
+          value={zoom}
         />
         <Button
           onClick={handleClick}
