@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import AvatarEditor from 'react-avatar-editor';
 import { Formik, Form, Field } from 'formik';
 import DeleteIcon from '@mui/icons-material/DeleteForever';
 import Box from '@mui/material/Box';
@@ -63,7 +64,7 @@ const ImageField = ({
 
   return (
     <Box>
-      <FileUploader className={className} name={name} onUploadSuccess={(url)=> setFieldValue(name, url)} />
+      <FileUploader className={className} name={name} onUploadSuccess={(url) => setFieldValue(name, url)} />
       {error &&
         <Box sx={{ color: 'error.dark', mb: 2 }}>
           {error}
@@ -75,18 +76,62 @@ const ImageField = ({
 const ALLOWED_FILE_EXTENSIONS = ['.gif', '.jpeg', '.jpg', '.png'];
 const RANDOM_IMAGE_DESCRIPTION = 'Lorem ipsum dolor sit amet';
 const MAX_FILE_SIZE = 7000000;
+const MIN_IMAGE_DIMENSIONS = {
+  height: 500,
+  width: 500,
+};
 const URL = 'http://localhost:8000/file-upload/';
+
+const readFileAsDataURL = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+
+    reader.onerror = (error) => {
+      reject(error);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+const convertBase64ToImage = (base64) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      resolve(img);
+    };
+
+    img.onerror = (error) => {
+      reject(error);
+    };
+
+    img.src = base64;
+  });
+}
+
 
 const FileUploader = ({
   className,
   name,
   onUploadSuccess,
 }) => {
-  const onDrop = useCallback(acceptedFiles => {
-    const [file] = acceptedFiles;
+  const [image, setImage] = useState(null);
+  const editorRef = useRef(null);
+
+  const handleClick = () => {
+    const croppedImageUrl = editorRef.current.getImage().toDataURL();
+    const croppedImage = new Image();
+    croppedImage.src = croppedImageUrl;
+    console.log(croppedImage);
+
     const formData = new FormData();
-    formData.append('title', file.name);
-    formData.append('image', file);
+    formData.append('title', RANDOM_IMAGE_DESCRIPTION);
+    formData.append('image', croppedImage);
     formData.append('description', RANDOM_IMAGE_DESCRIPTION);
 
     const requestOptions = {
@@ -107,7 +152,25 @@ const FileUploader = ({
       .catch(error => {
         console.error('Error during file upload:', error);
       });
-  }, [onUploadSuccess]);
+  };
+
+  const onDrop = useCallback(acceptedFiles => {
+    const [file] = acceptedFiles;
+
+    readFileAsDataURL(file)
+      .then((base64) => {
+        convertBase64ToImage(base64)
+          .then((img) => {
+            if (img.width >= MIN_IMAGE_DIMENSIONS.width && img.height >= MIN_IMAGE_DIMENSIONS.height) {
+              setImage(base64)
+            }
+          })
+      })
+      .catch((error) => {
+        console.error('Image dimensions error:', error);
+      });
+
+  }, []);
 
   const {
     getRootProps,
@@ -115,19 +178,37 @@ const FileUploader = ({
   } = useDropzone({
     onDrop,
     accept: {
-        'image/*': ALLOWED_FILE_EXTENSIONS,
+      'image/*': ALLOWED_FILE_EXTENSIONS,
     },
     maxSize: MAX_FILE_SIZE,
     multiple: false,
   });
 
   return (
-    <Box {...getRootProps()} className={className}>
-      <input {...getInputProps()} id={name} name={name} />
-      <Typography component='div' variant='overline'>
-        Drag and drop an image here, or click to select it
-      </Typography>
-    </Box>
+    <div>
+      {!image && <Box {...getRootProps()} className={className}>
+        <input {...getInputProps()} id={name} name={name} />
+        <Typography component='div' variant='overline'>
+          Drag and drop an image here, or click to select it
+        </Typography>
+      </Box>}
+      {image && <div>
+        <AvatarEditor
+          ref={editorRef}
+          image={image}
+          width={200}
+          height={200}
+          border={50}
+          scale={1.2}
+        />
+        <Button
+          onClick={handleClick}
+          sx={{ color: 'secondary.dark', display: 'block', m: '0px auto 15px' }}
+        >
+          Save
+        </Button>
+      </div>}
+    </div>
   );
 }
 
