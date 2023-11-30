@@ -10,7 +10,19 @@ export const img = css`
 
 export const box = css`
   display: flex;
+  justify-content: center;
   gap: 5px;
   margin-bottom: 15px;
 `;
+
+export const helperText = css`
+  margin: 0px auto 15px;
+  text-align: center;
+`;
+
+export const button = css`
+  display: block;
+  margin: 0px auto 15px;
+`;
+
 

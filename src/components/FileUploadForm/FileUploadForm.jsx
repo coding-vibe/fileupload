@@ -15,9 +15,11 @@ import * as classes from './styles';
 const FileUploadForm = () => {
   const handleSubmit = (
     values,
+    { setSubmitting }
   ) => {
+    setSubmitting(false);
     console.log(values);
-  }
+  };
 
   return (
     <Formik
@@ -68,7 +70,7 @@ const ImageField = ({
     <Box>
       <FileUploader className={className} name={name} onUploadSuccess={(url) => setFieldValue(name, url)} />
       {error &&
-        <FormHelperText error sx={{ m: '0px 0px 15px', textAlign: 'center' }}>
+        <FormHelperText error css={classes.helperText}>
           {error}
         </FormHelperText>}
     </Box>
@@ -104,18 +106,34 @@ const convertBase64ToImage = (base64) => {
   });
 };
 
-const dataURLtoFile = (url, fileNameWithExtension) => {
-  const arr = url.split(',');
-  const mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
+// const dataURLtoFile = (url, fileNameWithExtension) => {
+//   const arr = url.split(',');
+//   const mime = arr[0].match(/:(.*?);/)[1];
+//   const bstr = atob(arr[1]);
+//   let n = bstr.length;
+//   const u8arr = new Uint8Array(n);
 
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
+//   while (n--) {
+//     u8arr[n] = bstr.charCodeAt(n);
+//   }
 
-  return new File([u8arr], fileNameWithExtension, { type: mime });
+//   return new File([u8arr], fileNameWithExtension, { type: mime });
+// };
+
+const getBlob = async (canvas) => {
+  return new Promise((resolve, reject) => {
+    try {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to get the blob'));
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
 const readFileAsDataURL = (file) => {
@@ -144,33 +162,41 @@ const FileUploader = ({
   const [image, setImage] = useState(null);
   const [zoom, setZoom] = useState(SCALE_CONFIG.max);
 
-  const handleClick = () => {
-    const croppedImageUrl = editorRef.current.getImage().toDataURL();
-    const croppedImage = dataURLtoFile(croppedImageUrl, image.name);
-
-    const formData = new FormData();
-    formData.append('title', image.name);
-    formData.append('image', croppedImage);
-    formData.append('description', RANDOM_IMAGE_DESCRIPTION);
-
-    const requestOptions = {
-      method: 'POST',
-      body: formData,
-    };
-
-    fetch(URL, requestOptions)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((response) => {
-        onUploadSuccess(response.image_url);
-      })
-      .catch(error => {
-        console.error('Error during file upload:', error);
+  const handleClick = async () => {
+    try {
+      const canvas = editorRef.current.getImageScaledToCanvas();
+      const blob = await getBlob(canvas);
+      const croppedImage = new File([blob], image.name, {
+        type: image.type,
       });
+
+      const formData = new FormData();
+      formData.append('title', image.name);
+      formData.append('image', croppedImage);
+      formData.append('description', RANDOM_IMAGE_DESCRIPTION);
+
+      const requestOptions = {
+        method: 'POST',
+        body: formData,
+      };
+
+      fetch(URL, requestOptions)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((response) => {
+          onUploadSuccess(response.image_url);
+        })
+        .catch(error => {
+          console.error('Error during file upload:', error);
+        })
+    }
+    catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const handleZoomChange = (_, newZoom) => {
@@ -179,12 +205,13 @@ const FileUploader = ({
 
   const onDrop = useCallback(async (acceptedFiles) => {
     try {
+      setError('');
       const [file] = acceptedFiles;
       const base64 = await readFileAsDataURL(file);
       const img = await convertBase64ToImage(base64);
 
       if (img.width >= MIN_IMAGE_DIMENSIONS.width && img.height >= MIN_IMAGE_DIMENSIONS.height) {
-        setImage({ base64, name: file.name });
+        setImage({ base64, name: file.name, type: file.type });
       }
       else {
         setError(`Sorry, the minimum required image dimensions are ${MIN_IMAGE_DIMENSIONS.width}x${MIN_IMAGE_DIMENSIONS.height}`)
@@ -214,7 +241,10 @@ const FileUploader = ({
           Drag and drop an image here, or click to select it
         </Typography>
       </Box>}
-      {error && <FormHelperText error sx={{m: '0px 0px 15px', textAlign: 'center'}}>{error}</FormHelperText>}
+      {error &&
+        <FormHelperText error classes={classes.helperText}>
+        {error}
+      </FormHelperText>}
       {image && <div>
         <AvatarEditor
           border={50}
@@ -234,8 +264,9 @@ const FileUploader = ({
           value={zoom}
         />
         <Button
+          css={classes.button}
           onClick={handleClick}
-          sx={{ color: 'secondary.dark', display: 'block', m: '0px auto 15px' }}
+          sx={{ color: 'secondary.dark'}}
         >
           Save
         </Button>
