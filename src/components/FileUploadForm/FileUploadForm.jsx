@@ -21,7 +21,7 @@ const FileUploadForm = () => {
 
   return (
     <Formik
-      initialValues={{ file: null }}
+      initialValues={{ file: '' }}
       onSubmit={handleSubmit}
       validationSchema={VALIDATION_SCHEMA}
     >
