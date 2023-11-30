@@ -16,7 +16,7 @@ export const box = css`
 `;
 
 export const helperText = css`
-  margin: 0px auto 15px;
+  margin: 0px 0px 15px;
   text-align: center;
 `;
 

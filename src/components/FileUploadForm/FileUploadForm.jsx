@@ -242,7 +242,7 @@ const FileUploader = ({
         </Typography>
       </Box>}
       {error &&
-        <FormHelperText error classes={classes.helperText}>
+        <FormHelperText error css={classes.helperText}>
         {error}
       </FormHelperText>}
       {image && <div>
