@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useRef, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
 import AvatarEditor from 'react-avatar-editor';
+import { useDropzone } from 'react-dropzone';
 import { Formik, Form, Field } from 'formik';
 import DeleteIcon from '@mui/icons-material/DeleteForever';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import FormHelperText from '@mui/material/FormHelperText';
 import Slider from '@mui/material/Slider';
 import Typography from '@mui/material/Typography';
 import VALIDATION_SCHEMA from './validation';
@@ -67,9 +68,9 @@ const ImageField = ({
     <Box>
       <FileUploader className={className} name={name} onUploadSuccess={(url) => setFieldValue(name, url)} />
       {error &&
-        <Box sx={{ color: 'error.dark', mb: 2 }}>
+        <FormHelperText error sx={{ m: '0px 0px 15px', textAlign: 'center' }}>
           {error}
-        </Box>}
+        </FormHelperText>}
     </Box>
   );
 }
@@ -103,6 +104,20 @@ const convertBase64ToImage = (base64) => {
   });
 };
 
+const dataURLtoFile = (url, fileNameWithExtension) => {
+  const arr = url.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+
+  return new File([u8arr], fileNameWithExtension, { type: mime });
+};
+
 const readFileAsDataURL = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -125,18 +140,16 @@ const FileUploader = ({
   onUploadSuccess,
 }) => {
   const editorRef = useRef(null);
+  const [error, setError] = useState('');
   const [image, setImage] = useState(null);
   const [zoom, setZoom] = useState(SCALE_CONFIG.max);
 
   const handleClick = () => {
     const croppedImageUrl = editorRef.current.getImage().toDataURL();
-    const croppedImage = new Image();
-    croppedImage.src = croppedImageUrl;
-    console.log(croppedImage);
+    const croppedImage = dataURLtoFile(croppedImageUrl, image.name);
 
     const formData = new FormData();
-    //TODO: Should be changed
-    formData.append('title', RANDOM_IMAGE_DESCRIPTION);
+    formData.append('title', image.name);
     formData.append('image', croppedImage);
     formData.append('description', RANDOM_IMAGE_DESCRIPTION);
 
@@ -164,22 +177,21 @@ const FileUploader = ({
     setZoom(newZoom);
   };
 
-  const onDrop = useCallback(acceptedFiles => {
-    const [file] = acceptedFiles;
+  const onDrop = useCallback(async (acceptedFiles) => {
+    try {
+      const [file] = acceptedFiles;
+      const base64 = await readFileAsDataURL(file);
+      const img = await convertBase64ToImage(base64);
 
-    readFileAsDataURL(file)
-      .then((base64) => {
-        convertBase64ToImage(base64)
-          .then((img) => {
-            if (img.width >= MIN_IMAGE_DIMENSIONS.width && img.height >= MIN_IMAGE_DIMENSIONS.height) {
-              setImage(base64)
-            }
-          })
-      })
-      .catch((error) => {
-        console.error('Image dimensions error:', error);
-      });
-
+      if (img.width >= MIN_IMAGE_DIMENSIONS.width && img.height >= MIN_IMAGE_DIMENSIONS.height) {
+        setImage({ base64, name: file.name });
+      }
+      else {
+        setError(`Sorry, the minimum required image dimensions are ${MIN_IMAGE_DIMENSIONS.width}x${MIN_IMAGE_DIMENSIONS.height}`)
+      }
+    } catch (error) {
+      console.error('Image dimensions error:', error);
+    }
   }, []);
 
   const {
@@ -202,11 +214,12 @@ const FileUploader = ({
           Drag and drop an image here, or click to select it
         </Typography>
       </Box>}
+      {error && <FormHelperText error sx={{m: '0px 0px 15px', textAlign: 'center'}}>{error}</FormHelperText>}
       {image && <div>
         <AvatarEditor
           border={50}
           height={200}
-          image={image}
+          image={image.base64}
           ref={editorRef}
           scale={zoom}
           width={200}
