@@ -111,7 +111,7 @@ const getBlob = async (canvas) => {
   return new Promise((resolve, reject) => {
     try {
       canvas.toBlob((blob) => {
-        resolve(blob);
+          resolve(blob);
       });
     } catch (error) {
       reject(error);
@@ -145,42 +145,36 @@ const FileUploader = ({
   const [image, setImage] = useState(null);
   const [zoom, setZoom] = useState(SCALE_CONFIG.max);
 
-  const handleClick = async () => {
-    try {
-      const canvas = editorRef.current.getImageScaledToCanvas();
-      const blob = await getBlob(canvas);
-      const croppedImage = new File([blob], image.name, {
-        type: image.type,
-      });
+const handleClick = async () => {
+  try {
+    const canvas = editorRef.current.getImageScaledToCanvas();
+    const blob = await getBlob(canvas);
+    const croppedImage = new File([blob], image.name, {
+      type: image.type,
+    });
 
-      const formData = new FormData();
-      formData.append('title', image.name);
-      formData.append('image', croppedImage);
-      formData.append('description', RANDOM_IMAGE_DESCRIPTION);
+    const formData = new FormData();
+    formData.append('title', image.name);
+    formData.append('image', croppedImage);
+    formData.append('description', RANDOM_IMAGE_DESCRIPTION);
 
-      const requestOptions = {
-        method: 'POST',
-        body: formData,
-      };
+    const requestOptions = {
+      method: 'POST',
+      body: formData,
+    };
 
-      fetch(URL, requestOptions)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then((response) => {
-          onUploadSuccess(response.image_url);
-        })
-        .catch(error => {
-          console.error('Error during file upload:', error);
-        })
+    const response = await fetch(URL, requestOptions);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
     }
-    catch (error) {
-      console.error('Error:', error);
-    }
-  };
+
+    const responseData = await response.json();
+    onUploadSuccess(responseData.image_url);
+  } catch (error) {
+    console.error('Error during file upload:', error);
+  }
+};
 
   const handleZoomChange = (_, newZoom) => {
     setZoom(newZoom);
