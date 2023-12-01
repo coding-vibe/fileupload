@@ -107,7 +107,7 @@ const convertBase64ToImage = (base64) => {
 };
 
 
-const getBlob = async (canvas) => {
+const getBlob = (canvas) => {
   return new Promise((resolve, reject) => {
     try {
       canvas.toBlob((blob) => {
